@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+#install.packages("httr")
+library(httr)
+```
+
+```{r}
+# Sending API request with a key
+response <- GET("https://api.themoviedb.org/3/tv/top_rated?api_key=e3125dff006ab216b7133dda421fdea0&language=en-US&page=1")
+```
+
+```{r}
+# Checking the status code (200 - all good, 404 - error) and content 
+response$status_code
+
+#check the content
+response$content
+
+# Converting the raw file to character
+api_char <- base::rawToChar(response$content)
+
+#Converting the json file to a readable version
+api_json <- jsonlite::fromJSON(api_char, flatten = TRUE)
+api_json
+
+#Converting the json file to dataframe
+df <- data.frame(api_json)
+ncol(df)
+```
+
+```{r}
+View(df)
+```
+
+```{r}
+#Creating empty dataframe with 16 columns to use in for loop
+dt<-NULL
+dt <- data.frame(matrix(ncol=16,nrow=0))
+colnames(dt) <- colnames(df)
+```
+
+```{r}
+# Creating a for loop to convert every page of the json file to dataframe and add to df
+for (i in 1:131)
+  {
+      response <- GET(sprintf("https://api.themoviedb.org/3/tv/top_rated?api_key=e3125dff006ab216b7133dda421fdea0&language=en-US&page=%s",i))
+      api_char <- base::rawToChar(response$content)
+      api_json <- jsonlite::fromJSON(api_char, flatten = TRUE)
+      df_temp <- data.frame(api_json)
+      dt <- rbind(dt, df_temp)
+  }
+View(dt)
+```
+
+```{r}
+# Remove unnecessary columns
+dt <- subset(dt, select=c("results.first_air_date", "results.origin_country", "results.original_language", "results.name", "results.popularity", "results.vote_average", "results.vote_count", "results.overview"))
+
+#Standardize column names
+colnames(dt) <- gsub("results.", "", colnames(dt))
+
+#Convert columns of list type to character type
+
+```
+
+
+```{r}
+dt$origin_country <- as.character(dt$origin_country)
+```
+
+```{r}
+write.csv(dt, "./data_TV.csv", row.names=FALSE)
+```
+
+```{r}
+skimr::skim(dt$origin_country)
+nrow(dt)
+unique(dt$origin_country)
+```
+```{r}
+skimr::skim(dt$first_air_date)
+```
+
